@@ -1,67 +1,74 @@
 #!/usr/bin/env python3
-""" test file """
+""" Test utils
+"""
 import unittest
 from unittest.mock import patch
-from parameterized import parameterized
-
+import requests
 from utils import access_nested_map, get_json, memoize
+from parameterized import parameterized, parameterized_class
+
 
 class TestAccessNestedMap(unittest.TestCase):
-    """ Class test nested map """
+    """ Access nested map """
+
     @parameterized.expand([
         ({"a": 1}, ("a",), 1),
-        ({"a": {"b": 2}}, ("a",), {'b': 2}),
+        ({"a": {"b": 2}}, ("a",), {"b": 2}),
         ({"a": {"b": 2}}, ("a", "b"), 2)
     ])
-    def test_access_nested_map(self, map, path, expected_output):
-        """ returns correct output """
-        real_output = access_nested_map(map, path)
-        self.assertEqual(real_output, expected_output)
+    def test_access_nested_map(self, nested_map, path_map, result_expec):
+        """ Access nested method
+        """
+        self.assertEqual(access_nested_map(nested_map, path_map), result_expec)
 
     @parameterized.expand([
-        ({}, ("a",), 'a'),
-        ({"a": 1}, ("a", "b"), 'b')
+        ({}, ("a",)),
+        ({"a": 1}, ("a", "b"))
     ])
-    def test_access_nested_map_exception(self, map, path, wrong_output):
-        """ raises correct exception """
+    def test_access_nested_map_exception(self, nested_map, path_map):
+        """ Exception access nested method
+        """
+        with self.assertRaises(KeyError) as error:
+            access_nested_map(nested_map, path_map)
 
-        with self.assertRaises(KeyError) as e:
-            access_nested_map(map, path)
-
-        self.assertEqual(str(e.exception)[1:-1], wrong_output)
+        self.assertEqual(
+            f'KeyError({str(error.exception)})', repr(error.exception))
 
 
 class TestGetJson(unittest.TestCase):
-    """ Test with json """
+    """ Test JSON """
+
     @parameterized.expand([
         ("http://example.com", {"payload": True}),
-        ("http://holberton.io", {"payload": False}),
+        ("http://holberton.io", {"payload": False})
     ])
-    @patch('test_utils.get_json')
-    def test_get_json(self, test_url, test_payload, mock_get):
-        """ test utils.get_json """
-        mock_get.return_value = test_payload
-        result = get_json(test_url)
-        self.assertEqual(result, test_payload)
+    def test_get_json(self, test_url, test_payload):
+        """ Mock HTTP calls
+        """
+        with patch('requests.get') as mock_request:
+            mock_request.return_value.json.return_value = test_payload
+            self.assertEqual(get_json(url=test_url), test_payload)
 
 
 class TestMemoize(unittest.TestCase):
-    """ test with memoize """
+    """ Test Class to memoize """
+
     def test_memoize(self):
-        """ Ttest assert_called_once
-        """
+        """ Test memoize """
         class TestClass:
-            """ class """
+            """ Test Class """
+
             def a_method(self):
-                """ method  """
+                """ A method """
                 return 42
 
             @memoize
             def a_property(self):
-                """ property """
+                """ Decorator """
                 return self.a_method()
-        with patch.object(TestClass, "a_method") as mockMethod:
+
+        with patch.object(TestClass, 'a_method') as mock:
             test_class = TestClass()
-            test_class.a_property
-            test_class.a_property
-            mockMethod.assert_called_once
+            test_class.a_property()
+            test_class.a_property()
+            mock.assert_called_once()
